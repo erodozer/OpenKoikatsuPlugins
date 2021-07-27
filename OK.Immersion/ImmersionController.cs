@@ -1,4 +1,6 @@
-﻿using KKAPI.MainGame;
+﻿using System.Collections;
+using BepInEx.Unity;
+using KKAPI.MainGame;
 using UnityEngine;
 using Manager;
 using ActionGame;
@@ -37,7 +39,9 @@ namespace OKPlug
         {
             get
             {
-                return MealsEaten < MealLimit;
+                return ImmersionPlugin.FullStomach.Value
+                    ? MealsEaten < MealLimit
+                    : true;
             }
         }
 
@@ -63,11 +67,17 @@ namespace OKPlug
             get
             {
                 // severely limit orgasm limit when on an empty stomach
-                if (MealsEaten == 0)
+                if (ImmersionPlugin.EmptyStomach.Value && MealsEaten == 0)
                 {
                     return 2;
                 }
-                return (int)Mathf.Lerp(1, 10, Mathf.InverseLerp(0, 100, player.hentai));
+                // otherwise base on times orgasmed if sore member is enabled
+                else if (ImmersionPlugin.SoreMember.Value)
+                {
+                    return (int)Mathf.Lerp(1, 10, Mathf.InverseLerp(0, 100, player.hentai));
+                }
+                // default to unlimited orgasms
+                return int.MaxValue;
             }
         }
 
@@ -91,7 +101,9 @@ namespace OKPlug
         {
             get
             {
-                return TimesOrgasmed < OrgasmLimit;
+                return (ImmersionPlugin.SoreMember.Value || ImmersionPlugin.EmptyStomach.Value)
+                    ? TimesOrgasmed < OrgasmLimit
+                    : true;
             }
         }
 
@@ -104,14 +116,18 @@ namespace OKPlug
         {
             get
             {
-                var cherryBoy = Mathf.Lerp(
-                    .5f, 5f,
-                    Mathf.InverseLerp(100, 0, MaleExperience)
-                );
-                var soreMember = Mathf.Lerp(
-                    .2f, 1.0f,
-                    Mathf.InverseLerp(OrgasmLimit, 0, TimesOrgasmed)
-                );
+                var cherryBoy = ImmersionPlugin.CherryBoy.Value 
+                    ? Mathf.Lerp(
+                        .5f, 5f,
+                        Mathf.InverseLerp(100, 0, MaleExperience)
+                    )
+                    : 1.0f;
+                var soreMember = ImmersionPlugin.SoreMember.Value
+                    ? Mathf.Lerp(
+                        .2f, 1.0f,
+                        Mathf.InverseLerp(OrgasmLimit, 0, TimesOrgasmed)
+                    )
+                    : 1.0f;
 
                 return cherryBoy * soreMember;
             }
@@ -153,8 +169,24 @@ namespace OKPlug
             TimesOrgasmed = (int)Mathf.Max(0, TimesOrgasmed - RecoverRate);
         }
 
+        protected override void OnStartH(HSceneProc proc, bool freeH)
+        {
+            StartCoroutine(AutoEndOnOrgasmLimit(proc));
+        }
+
+        IEnumerator AutoEndOnOrgasmLimit(HSceneProc proc)
+        {
+            yield return new WaitUntil(() =>
+                !CanDoH && proc.sprite.btnEnd.interactable
+            );
+            InputSimulator.MouseButtonUp(0);
+            proc.sprite.OnClickHSceneEnd();
+            InputSimulator.UnsetMouseButton(0);
+        }
+
         protected override void OnEndH(HSceneProc proc, bool freeH)
         {
+            StopAllCoroutines();
             var flags = proc.flags;
 
             var experience =
@@ -175,7 +207,6 @@ namespace OKPlug
         {
              _addPoint *= Instance.Sensitivity;
         }
-
 
         [HarmonyPostfix, 
             HarmonyPatch(typeof(HFlag), nameof(HFlag.AddSonyuInside)),

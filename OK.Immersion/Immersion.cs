@@ -6,6 +6,7 @@ using KKAPI.MainGame;
 namespace OKPlug
 {
     [BepInPlugin(GUID, "OKPlug.Immersion", Version)]
+    [BepInDependency("github.lunared.bepinex.unityinput", BepInDependency.DependencyFlags.HardDependency)]
     internal class ImmersionPlugin : BaseUnityPlugin
     {
         public const string GUID = "github.lunared.okplug.immersion";

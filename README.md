@@ -9,6 +9,7 @@ This makes the extensions relatively unintrusive and portable.
 Prerequisites:
 * Install [BepInEx 5.4](https://github.com/BepInEx/BepInEx/releases) or later.
 * Install [KKAPI 1.20.0](https://github.com/IllusionMods/IllusionModdingAPI) or later.
+* Install [BepInEx.UnityInput](https://github.com/nhydock/BepInEx.UnityInput)
 
 Download the DLLs from the latest release and move them into BepInEx\plugins under your game directory.
 
@@ -17,6 +18,8 @@ Download the DLLs from the latest release and move them into BepInEx\plugins und
 ### OK.TopMe
 
 Allows the AI to take charge of things in the bedroom.  Different positions and actions are chosen automatically, allowing for a more passive experience.
+
+This will even juggle new positions added with [AnimationLoader](https://github.com/IllusionMods/AnimationLoader)
 
 ### OK.Immersion
 
