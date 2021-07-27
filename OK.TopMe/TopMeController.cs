@@ -193,10 +193,18 @@ namespace OKPlug
                     continue;
                 }
 
+                // pause for a bit to let the player potentially choose an interaction
                 yield return new WaitForSeconds(3f);
 
                 // leverage simulating clicking in the menu
                 var choices = AvailableActions;
+
+                // choices might have disappeared during the wait time
+                if (choices.Count <= 0)
+                {
+                    continue;
+                }
+
                 var index = rand.Next(0, choices.Count);
                 nextAction = choices[index];
 

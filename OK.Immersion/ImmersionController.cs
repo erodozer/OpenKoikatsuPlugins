@@ -176,6 +176,12 @@ namespace OKPlug
 
         IEnumerator AutoEndOnOrgasmLimit(HSceneProc proc)
         {
+            // only support during main game
+            if (proc.flags.isFreeH)
+            {
+                yield break;
+            }
+
             yield return new WaitUntil(() =>
                 !CanDoH && proc.sprite.btnEnd.interactable
             );
@@ -203,9 +209,14 @@ namespace OKPlug
 
 
         [HarmonyPrefix, HarmonyPatch(typeof(HFlag), nameof(HFlag.MaleGaugeUp))]
-        private static void SoreMemberMultiplier(ref float _addPoint)
+        private static void SoreMemberMultiplier(ref float _addPoint, HFlag __instance)
         {
-             _addPoint *= Instance.Sensitivity;
+            // only support during main game
+            if (__instance.isFreeH)
+            {
+                return;
+            }
+            _addPoint *= Instance.Sensitivity;
         }
 
         [HarmonyPostfix, 
@@ -218,9 +229,26 @@ namespace OKPlug
             HarmonyPatch(typeof(HFlag), nameof(HFlag.AddHoushiInside)),
             HarmonyPatch(typeof(HFlag), nameof(HFlag.AddHoushiOutside))
         ]
-        private static void OnOrgasm()
+        private static void OnOrgasm(HFlag __instance)
         {
+            // only support during main game
+            if (__instance.isFreeH)
+            {
+                return;
+            }
             Instance.TimesOrgasmed += 1;
+        }
+
+        [HarmonyPostfix, HarmonyPatch(typeof(ADV.Commands.Base.Choice), nameof(ADV.Commands.Base.Choice.Do))]
+        private static void DisableLunchChoice(ref ADV.Commands.Base.Choice __instance)
+        {
+            
+        }
+
+        [HarmonyPostfix, HarmonyPatch(typeof(ADV.Commands.Base.Choice), nameof(ADV.Commands.Base.Choice.Do))]
+        private static void DisableHChoice(ref ADV.Commands.Base.Choice __instance)
+        {
+
         }
     }
 }
