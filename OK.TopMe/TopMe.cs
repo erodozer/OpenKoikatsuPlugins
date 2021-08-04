@@ -15,14 +15,20 @@ namespace OKPlug
 
         public static new PluginInfo Info { get; private set; }
 
+        public new static ManualLogSource Logger;
+
         public static ConfigEntry<bool> PickPosition { get; private set; }
         public static ConfigEntry<bool> RelySonyu { get; private set; }
         public static ConfigEntry<bool> AutoOrgasm { get; private set; }
+
+        public static ConfigEntry<bool> Edge { get; private set; }
 
         private Harmony _pluginTriggers;
 
         public void Awake()
         {
+            Logger = base.Logger;
+
             PickPosition = Config.Bind(
                 section: "TopMe",
                 key: "Pick Position",
@@ -40,6 +46,13 @@ namespace OKPlug
                 key: "Auto Orgasm",
                 defaultValue: true,
                 "Male character will automatically orgasm regardless of position when excitement guage is full"
+            );
+
+            Edge = Config.Bind(
+                section: "TopMe",
+                key: "Allow Edging",
+                defaultValue: true,
+                "Female character will occasionally edge the player, reducing stopping the animation and dropping their excitement"
             );
 
             GameAPI.RegisterExtraBehaviour<TopMeController>(GUID);
@@ -71,12 +84,6 @@ namespace OKPlug
             public static void OnAnimChange(ref HSceneProc.AnimationListInfo _nextAinmInfo)
             {
                 ((TopMeController)GameAPI.GetRegisteredBehaviour(GUID)).ChangeAnimation(_nextAinmInfo);
-            }
-
-            [HarmonyPrefix, HarmonyPatch(typeof(HSceneProc), nameof(HSceneProc.ChangeCategory))]
-            private static void ChangeCategory(int _category)
-            {
-                ((TopMeController)GameAPI.GetRegisteredBehaviour(GUID)).ChangeCategory(_category);
             }
         }
     }

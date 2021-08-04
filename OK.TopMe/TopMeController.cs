@@ -1,4 +1,4 @@
-﻿using BepInEx.Unity;
+using BepInEx.Unity;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.Events;
@@ -17,20 +17,14 @@ namespace OKPlug
             "OUT_A", "A_OUT_A", "Idle", "A_Idle", "Vomit_A", "Drink_A"
         };
 
-        // list of states with actions that we will automatically choose from
-        private static readonly List<string> ActionableStates = new List<string>()
-        {
-            "IN_A", "A_IN_A", "Oral_Idle", "Idle"
-        };
-
-        private static readonly List<string> ReplayStates = new List<string>()
-        {
-            "IN_A", "A_IN_A"
-        };
-
         private static readonly List<string> HLoops = new List<string>()
         {
             "WLoop", "SLoop", "A_WLoop", "A_SLoop", "InsertIdle", "A_InsertIdle", "OLoop", "A_OLoop"
+        };
+
+        private static readonly List<string> ModeLoops = new List<string>()
+        {
+            "WLoop", "SLoop", "A_WLoop", "A_SLoop"
         };
 
         private System.Random rand = new System.Random();
@@ -39,13 +33,14 @@ namespace OKPlug
         private HSceneProc HScene;
         private HFlag Flags { get { return HScene?.flags; } }
         private HSprite Sprite { get { return HScene?.sprite; } }
-        private int category = 0;
-
+        
         private HSceneProc.AnimationListInfo CurrentAnimation { get { return Flags?.nowAnimationInfo; } }
         private string CurrentAnimationState { get { return Flags?.nowAnimStateName; } }
 
         private Button nextAction;
         private HSceneProc.AnimationListInfo nextAnimation;
+
+        private bool IsEdging = false;
 
         public bool HasOrgasmed { get; private set; }
 
@@ -140,7 +135,13 @@ namespace OKPlug
         public void ChangeAnimation(HSceneProc.AnimationListInfo nextAnimInfo)
         {
             HasOrgasmed = false;
-            switch (nextAnimInfo.mode)
+
+            if (Flags == null || HScene == null)
+            {
+                return;
+            }
+
+            switch (nextAnimInfo?.mode)
             {
                 case HFlag.EMode.houshi:
                     Flags.rely = true;
@@ -153,14 +154,11 @@ namespace OKPlug
             }
         }
 
-        public void ChangeCategory(int category)
-        {
-            this.category = category;
-        }
-
         protected override void OnStartH(HSceneProc proc, bool freeH)
         {
             this.HScene = proc;
+
+            IsEdging = false;
 
             fakeAnimButton = Instantiate(proc.sprite.objMotionListNode, gameObject.transform, false);
             fakeAnimButton.AddComponent<HSprite.AnimationInfoComponent>();
@@ -170,12 +168,15 @@ namespace OKPlug
             StartCoroutine(PickNextAnimation());
             StartCoroutine(AdjustSpeed());
             StartCoroutine(AdjustMotion());
+            StartCoroutine(EdgeMe());
         }
 
         protected override void OnEndH(HSceneProc proc, bool freeH)
         {
-            Destroy(fakeAnimButton);
             StopAllCoroutines();
+            Destroy(fakeAnimButton);
+            nextAction = null;
+            nextAnimation = null;
         }
 
         IEnumerator PickAction()
@@ -183,7 +184,6 @@ namespace OKPlug
             yield return new WaitUntil(() => Flags != null && Sprite != null);
             while (true)
             {
-                nextAction = null;
                 yield return new WaitUntil(() => TopMePlugin.RelySonyu.Value && IsActionable);
 
                 // ignore early orgasm buttons if auto orgasm is enabled
@@ -202,6 +202,7 @@ namespace OKPlug
                 // choices might have disappeared during the wait time
                 if (choices.Count <= 0)
                 {
+                    yield return new WaitForSeconds(1f);
                     continue;
                 }
 
@@ -211,7 +212,8 @@ namespace OKPlug
                 InputSimulator.MouseButtonUp(0); // koikatsu actions check for left click mouse up
                 nextAction?.onClick?.Invoke();
                 InputSimulator.UnsetMouseButton(0);
-                yield return new WaitForSeconds(1f);
+                yield return new WaitForSeconds(3f);
+                nextAction = null;
             }
         }
 
@@ -220,11 +222,8 @@ namespace OKPlug
             yield return new WaitUntil(() => Flags != null && Sprite != null);
             while (true)
             {
-                yield return new WaitUntil(() => TopMePlugin.PickPosition.Value);
-                yield return new WaitUntil(() => IsAnimationOver);
-                yield return new WaitForSeconds((float)(rand.NextDouble() * 2.0) + 1f);
-                yield return new WaitUntil(() => IsAnimationOver);
-
+                yield return new WaitUntil(() => TopMePlugin.PickPosition.Value && IsAnimationOver);
+                
                 var choices = AvailableAnimations;
 
                 // THIS SHOULDN'T HAPPEN but catch it just in case
@@ -235,7 +234,11 @@ namespace OKPlug
                 }
                 nextAnimation = choices[rand.Next(0, choices.Count)];
                 fakeAnimButton.GetComponent<HSprite.AnimationInfoComponent>().info = nextAnimation;
+                fakeAnimButton.GetComponent<Toggle>().isOn = false;
                 Sprite.OnChangePlaySelect(fakeAnimButton);
+                fakeAnimButton.GetComponent<HSprite.AnimationInfoComponent>().info = null;
+
+                yield return new WaitForSeconds(3f);
             }
         }
 
@@ -245,36 +248,51 @@ namespace OKPlug
             while (true)
             {
                 yield return new WaitUntil(() => TopMePlugin.RelySonyu.Value);
-                // don't need to do any behavior since koikatsu has this
-                // out of the box for houshi
+                
+                if (Flags.mode == HFlag.EMode.sonyu)
+                {
+                    var proc = (HSonyu)CurrentHProc;
+                    if (IsEdging)
+                    {
+                        
+                        continue;
+                    }
+
+                    if (!IsInHLoop)
+                    {
+                        continue;
+                    }
+
+                    if (!proc.isAuto)
+                    {
+                        Flags.click = HFlag.ClickKind.modeChange;
+                        continue;
+                    }
+
+                    var target = (float)rand.NextDouble();
+                    var start = Flags.speedCalc;
+                    for (var d = 0.0f; d < 1.0f; d += Time.deltaTime)
+                    {
+                        Flags.speedCalc = Mathf.Lerp(start, target, d);
+                        yield return new WaitForEndOfFrame();
+                    }
+                    Flags.speedCalc = Mathf.Lerp(start, target, 1.0f);
+                    yield return new WaitForSeconds((float)rand.NextDouble() * 3f + 0.1f);
+                }
+
                 if (Flags.mode == HFlag.EMode.houshi)
                 {
-                    if (!Flags.rely)
+                    var proc = (HHoushi)CurrentHProc;
+                    if (IsEdging)
+                    {
+                        Flags.rely = false;
+                    }
+                    else if (!Flags.rely)
                     {
                         Flags.rely = true;
                         HScene.rely.InitTimer();
                     }
-                    continue;
                 }
-                if (Flags.mode != HFlag.EMode.sonyu)
-                {
-                    continue;
-                }
-
-                var proc = (HSonyu)CurrentHProc;
-                if (!HLoops.Contains(CurrentAnimationState))
-                {
-                    continue;
-                }
-                
-                if (!proc.isAuto)
-                {
-                    Flags.click = HFlag.ClickKind.modeChange;
-                    continue;
-                }
-                // TODO smooth this
-                Flags.speedCalc = Mathf.Clamp01(Flags.speedCalc + ((float)rand.NextDouble() * .4f) - 0.2f);
-                yield return new WaitForSeconds((float)rand.NextDouble() * 3f + 0.1f);
             }
         }
 
@@ -285,15 +303,65 @@ namespace OKPlug
             {
                 yield return new WaitUntil(() => TopMePlugin.RelySonyu.Value &&
                     (
-                        Flags.mode == HFlag.EMode.houshi ||
                         Flags.mode == HFlag.EMode.sonyu
                     )
                 );
-                yield return new WaitForSeconds((float)rand.NextDouble() * 5f + 5f);
-                // occasionally change mode
-                if (rand.NextDouble() < 0.1)
+
+                if (IsEdging)
                 {
+                    continue;
+                }
+
+                // occasionally change mode
+                if (ModeLoops.Contains(Flags.nowAnimStateName) && rand.NextDouble() < 0.1)
+                {
+                    yield return new WaitForSeconds((float)rand.NextDouble() * 5f + 2f);
                     Flags.click = HFlag.ClickKind.motionchange;
+                }
+                yield return new WaitForSeconds(1f);
+            }
+        }
+
+        IEnumerator EdgeMe()
+        {
+            yield return new WaitUntil(() => Flags != null && Sprite != null);
+            while (true)
+            {
+                yield return new WaitUntil(() => TopMePlugin.RelySonyu.Value &&
+                    (
+                        Flags.mode == HFlag.EMode.houshi
+                        || (Flags.mode == HFlag.EMode.sonyu && Flags.nowAnimationInfo.isFemaleInitiative)
+                    )
+                );
+
+                if (Flags.gaugeMale > 50 && rand.NextDouble() < .05f)
+                {
+                    if (Flags.mode == HFlag.EMode.houshi)
+                    {
+                        CurrentHProc.MotionChange(0);
+                    }
+                    else if (Flags.mode == HFlag.EMode.sonyu)
+                    {
+                        var proc = (HSonyu)CurrentHProc;
+                        if (proc.isAuto)
+                        {
+                            Flags.click = HFlag.ClickKind.modeChange;
+                        }
+                        Flags.speedCalc = 0;
+                    }
+                    IsEdging = true;
+                    var edgeFor = (float)rand.NextDouble() * 5f + 5f;
+                    while (edgeFor > 0)
+                    {
+                        Flags.MaleGaugeUp(-8 * Time.deltaTime);
+                        edgeFor -= Time.deltaTime;
+                        yield return new WaitForEndOfFrame();
+                    }
+                    IsEdging = false;
+                }
+                else
+                {
+                    yield return new WaitForSeconds(1f);
                 }
             }
         }
