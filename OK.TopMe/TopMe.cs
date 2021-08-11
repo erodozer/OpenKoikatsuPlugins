@@ -1,8 +1,11 @@
 ﻿using BepInEx;
+using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using KKAPI.MainGame;
+using System;
+using UnityEngine;
 
 namespace OKPlug
 {
@@ -12,6 +15,8 @@ namespace OKPlug
     {
         public const string GUID = "github.lunared.okplug.topme";
         public const string Version = "1.0.0";
+
+        private const string VRHSceneTypeName = "VRHScene, Assembly-CSharp";
 
         public static new PluginInfo Info { get; private set; }
 
@@ -56,10 +61,20 @@ namespace OKPlug
             );
 
             GameAPI.RegisterExtraBehaviour<TopMeController>(GUID);
-            
+
             _pluginTriggers = Harmony.CreateAndPatchAll(
                 typeof(Triggers)
             );
+            
+            if (Type.GetType(VRHSceneTypeName) != null)
+            {
+                Logger.LogDebug("Adding triggers for VR");
+                _pluginTriggers.PatchAll(typeof(VRTriggers));
+            }
+            else
+            {
+                Logger.LogDebug("VR assembly not present; omitting VR triggers");
+            }
         }
 
         public void OnDestroy()
@@ -84,6 +99,27 @@ namespace OKPlug
             public static void OnAnimChange(ref HSceneProc.AnimationListInfo _nextAinmInfo)
             {
                 ((TopMeController)GameAPI.GetRegisteredBehaviour(GUID)).ChangeAnimation(_nextAinmInfo);
+            }
+        }
+
+        private static class VRTriggers
+        {
+            [HarmonyPostfix]
+            [HarmonyPatch(VRHSceneTypeName, "Start")]
+            public static void OnStart(MonoBehaviour __instance)
+            {
+                var adapter = Chainloader.ManagerObject.AddComponent<VRHSceneAdapter>();
+                adapter.InitAdapter(__instance);
+                ((TopMeController)GameAPI.GetRegisteredBehaviour(GUID)).ForceStartH(adapter, true);
+            }
+
+            [HarmonyPostfix]
+            [HarmonyPatch(VRHSceneTypeName, "EndProc")]
+            public static void OnEndProc(MonoBehaviour __instance)
+            {
+                var adapter = Chainloader.ManagerObject.GetComponent<VRHSceneAdapter>();
+                ((TopMeController)GameAPI.GetRegisteredBehaviour(GUID)).ForceEndH(adapter, true);
+                Destroy(adapter);
             }
         }
     }

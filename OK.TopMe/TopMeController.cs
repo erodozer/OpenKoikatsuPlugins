@@ -1,11 +1,10 @@
 using BepInEx.Unity;
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.Events;
 using KKAPI.MainGame;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace OKPlug
 {
@@ -33,7 +32,7 @@ namespace OKPlug
         private HSceneProc HScene;
         private HFlag Flags { get { return HScene?.flags; } }
         private HSprite Sprite { get { return HScene?.sprite; } }
-        
+
         private HSceneProc.AnimationListInfo CurrentAnimation { get { return Flags?.nowAnimationInfo; } }
         private string CurrentAnimationState { get { return Flags?.nowAnimStateName; } }
 
@@ -177,6 +176,16 @@ namespace OKPlug
             Destroy(fakeAnimButton);
             nextAction = null;
             nextAnimation = null;
+        }
+
+        internal void ForceStartH(HSceneProc proc, bool freeH)
+        {
+            OnStartH(proc, freeH);
+        }
+
+        internal void ForceEndH(HSceneProc proc, bool freeH)
+        {
+            OnEndH(proc, freeH);
         }
 
         IEnumerator PickAction()
