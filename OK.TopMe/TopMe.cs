@@ -21,7 +21,7 @@ namespace OKPlug
         public static ConfigEntry<bool> RelySonyu { get; private set; }
         public static ConfigEntry<bool> AutoOrgasm { get; private set; }
 
-        public static ConfigEntry<bool> Edge { get; private set; }
+        public static ConfigEntry<EdgeMode> Edge { get; private set; }
 
         private Harmony _pluginTriggers;
 
@@ -51,8 +51,9 @@ namespace OKPlug
             Edge = Config.Bind(
                 section: "TopMe",
                 key: "Allow Edging",
-                defaultValue: true,
-                "Female character will occasionally edge the player, reducing stopping the animation and dropping their excitement"
+                defaultValue: EdgeMode.FemaleInitiated,
+                "Female character will occasionally edge the player, reducing stopping the animation and dropping their excitement\n"
+                +"This only functions on female initated animations."
             );
 
             GameAPI.RegisterExtraBehaviour<TopMeController>(GUID);

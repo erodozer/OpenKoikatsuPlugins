@@ -11,7 +11,7 @@ namespace OKPlug
     internal class ImmersionController : GameCustomFunctionController
     {
         private static ImmersionController Instance;
-        private SaveData.Player player;
+        private SaveData.Player player { get { return Singleton<Game>.Instance.Player; } }
         
         /// <summary>
         /// Number of meals the player has eaten in a day
@@ -136,11 +136,6 @@ namespace OKPlug
         protected void Awake()
         {
             Instance = this;
-        }
-
-        override protected void OnNewGame()
-        {
-            player = Singleton<Game>.Instance.Player;
         }
 
         override protected void OnDayChange(Cycle.Week day)

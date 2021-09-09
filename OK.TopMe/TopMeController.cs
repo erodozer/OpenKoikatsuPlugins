@@ -1,7 +1,6 @@
 using BepInEx.Unity;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Events;
 using KKAPI.MainGame;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,6 +8,14 @@ using System.Linq;
 
 namespace OKPlug
 {
+    internal enum EdgeMode
+    {
+        Disabled,
+        Service,
+        FemaleInitiated,
+        AllPositions
+    }
+
     internal class TopMeController : GameCustomFunctionController
     {
         // list of states where the controller is allowed to think and pick the next action
@@ -19,12 +26,28 @@ namespace OKPlug
 
         private static readonly List<string> HLoops = new List<string>()
         {
-            "WLoop", "SLoop", "A_WLoop", "A_SLoop", "InsertIdle", "A_InsertIdle", "OLoop", "A_OLoop"
+            "WLoop", "SLoop", "A_WLoop", "A_SLoop", "InsertIdle", "A_InsertIdle"
         };
 
         private static readonly List<string> ModeLoops = new List<string>()
         {
             "WLoop", "SLoop", "A_WLoop", "A_SLoop"
+        };
+
+        private static readonly Dictionary<HFlag.EMode, List<string>> EdgableLoops = new Dictionary<HFlag.EMode, List<string>>()
+        {
+            {  
+                HFlag.EMode.houshi, 
+                new List<string>(){
+                    "WLoop", "SLoop", "OLoop"
+                } 
+            },
+            {  
+                HFlag.EMode.sonyu, 
+                new List<string>() {
+                    "WLoop", "SLoop", "A_WLoop", "A_SLoop"
+                } 
+            }
         };
 
         private System.Random rand = new System.Random();
@@ -41,6 +64,7 @@ namespace OKPlug
         private HSceneProc.AnimationListInfo nextAnimation;
 
         private bool IsEdging = false;
+        private float EdgeTimer = 0;
 
         public bool HasOrgasmed { get; private set; }
 
@@ -152,6 +176,8 @@ namespace OKPlug
                     Flags.click = HFlag.ClickKind.modeChange;
                     break;
             }
+
+            ResetEdgeTimer();
         }
 
         protected override void OnStartH(HSceneProc proc, bool freeH)
@@ -254,7 +280,6 @@ namespace OKPlug
                     var proc = (HSonyu)CurrentHProc;
                     if (IsEdging)
                     {
-                        
                         continue;
                     }
 
@@ -278,20 +303,6 @@ namespace OKPlug
                     }
                     Flags.speedCalc = Mathf.Lerp(start, target, 1.0f);
                     yield return new WaitForSeconds((float)rand.NextDouble() * 3f + 0.1f);
-                }
-
-                if (Flags.mode == HFlag.EMode.houshi)
-                {
-                    var proc = (HHoushi)CurrentHProc;
-                    if (IsEdging)
-                    {
-                        Flags.rely = false;
-                    }
-                    else if (!Flags.rely)
-                    {
-                        Flags.rely = true;
-                        HScene.rely.InitTimer();
-                    }
                 }
             }
         }
@@ -322,47 +333,87 @@ namespace OKPlug
             }
         }
 
+        void ResetEdgeTimer()
+        {
+            EdgeTimer = (float)rand.NextDouble() * 40f + 20f;
+            IsEdging = false;
+        }
+
         IEnumerator EdgeMe()
         {
             yield return new WaitUntil(() => Flags != null && Sprite != null);
+            ResetEdgeTimer();
+            var edgeFor = 0f;
             while (true)
             {
-                yield return new WaitUntil(() => TopMePlugin.RelySonyu.Value &&
-                    (
-                        Flags.mode == HFlag.EMode.houshi
-                        || (Flags.mode == HFlag.EMode.sonyu && Flags.nowAnimationInfo.isFemaleInitiative)
+                yield return new WaitUntil(() => 
+                    (TopMePlugin.RelySonyu.Value && TopMePlugin.Edge.Value != EdgeMode.Disabled)
+                    && (
+                        TopMePlugin.Edge.Value != EdgeMode.AllPositions
+                        || (CurrentAnimation.mode == HFlag.EMode.houshi && TopMePlugin.Edge.Value == EdgeMode.Service)
+                        || (CurrentAnimation.mode == HFlag.EMode.houshi && TopMePlugin.Edge.Value == EdgeMode.FemaleInitiated)
+                        || (CurrentAnimation.mode == HFlag.EMode.sonyu && CurrentAnimation.isFemaleInitiative && TopMePlugin.Edge.Value == EdgeMode.FemaleInitiated)
                     )
                 );
 
-                if (Flags.gaugeMale > 50 && rand.NextDouble() < .05f)
+                // decrease male gauge while edging
+                if (IsEdging && edgeFor > 0)
+                {
+                    Flags.MaleGaugeUp(-5 * Time.deltaTime);
+                    edgeFor -= Time.deltaTime;
+                    continue;
+                }
+
+                // reset back to edge loop when edging is complete
+                if (IsEdging && edgeFor <= 0)
                 {
                     if (Flags.mode == HFlag.EMode.houshi)
                     {
-                        CurrentHProc.MotionChange(0);
+                        Flags.rely = true;
+                        CurrentHProc.MotionChange(1);
                     }
-                    else if (Flags.mode == HFlag.EMode.sonyu)
+                    ResetEdgeTimer();
+                    continue;
+                }
+
+                // wait until next edge moment
+                if (EdgeTimer > 0)
+                {
+                    EdgeTimer -= Time.deltaTime;
+                    continue;
+                }
+
+                // only edge when appropriate
+                if (!(EdgableLoops.ContainsKey(Flags.mode) &&
+                    EdgableLoops[Flags.mode].Contains(CurrentAnimationState)))
+                {
+                    continue;
+                }
+                
+                // koikatsu's proc loop uses animation state name instead of gauge
+                // to know what to go to.  It doesn't understand how to handle the
+                // gauge going down except after orgasm, so we forceably will move
+                // back to idle.
+                if (Flags.mode == HFlag.EMode.houshi)
+                {
+                    CurrentHProc.MotionChange(0);
+                    Flags.rely = false;
+                }
+                else if (Flags.mode == HFlag.EMode.sonyu)
+                {
+                    var proc = (HSonyu)CurrentHProc;
+                    if (proc.isAuto)
                     {
-                        var proc = (HSonyu)CurrentHProc;
-                        if (proc.isAuto)
-                        {
-                            Flags.click = HFlag.ClickKind.modeChange;
-                        }
-                        Flags.speedCalc = 0;
+                        Flags.click = HFlag.ClickKind.modeChange;
                     }
-                    IsEdging = true;
-                    var edgeFor = (float)rand.NextDouble() * 5f + 5f;
-                    while (edgeFor > 0)
-                    {
-                        Flags.MaleGaugeUp(-8 * Time.deltaTime);
-                        edgeFor -= Time.deltaTime;
-                        yield return new WaitForEndOfFrame();
-                    }
-                    IsEdging = false;
+                    Flags.speedCalc = 0;
                 }
                 else
                 {
-                    yield return new WaitForSeconds(1f);
+                    continue;
                 }
+                IsEdging = true;
+                edgeFor = (float)rand.NextDouble() * 5f + 5f;
             }
         }
     }

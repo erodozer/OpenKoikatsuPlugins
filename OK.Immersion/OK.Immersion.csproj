@@ -33,23 +33,20 @@
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BepInEx.UnityInput, Version=0.2.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\BepInEx.UnityInput\bin\BepInEx.UnityInput.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <PackageReference Include="IllusionLibs.BepInEx" Version="5.4.8" />
-    <PackageReference Include="IllusionLibs.BepInEx.Harmony" Version="2.3.2" />
-    <PackageReference Include="IllusionLibs.Koikatu.Assembly-CSharp" Version="2019.4.27.4" />
-    <PackageReference Include="IllusionLibs.Koikatu.Assembly-CSharp-firstpass" Version="2019.4.27.4" />
-    <PackageReference Include="IllusionLibs.Koikatu.UnityEngine" Version="5.6.2.4" />
-    <PackageReference Include="IllusionLibs.Koikatu.UnityEngine.UI" Version="5.6.2" />
-    <PackageReference Include="IllusionModdingAPI.KKAPI" Version="1.20.3" />
+    <PackageReference Include="IllusionLibs.BepInEx" Version="5.4.8" ExcludeAssets="runtime" />
+    <PackageReference Include="IllusionLibs.BepInEx.Harmony" Version="2.3.2" ExcludeAssets="runtime" />
+    <PackageReference Include="IllusionLibs.Koikatu.Assembly-CSharp" Version="2019.4.27.4" ExcludeAssets="runtime" />
+    <PackageReference Include="IllusionLibs.Koikatu.Assembly-CSharp-firstpass" Version="2019.4.27.4" ExcludeAssets="runtime" />
+    <PackageReference Include="IllusionLibs.Koikatu.UnityEngine" Version="5.6.2.4" ExcludeAssets="runtime" />
+    <PackageReference Include="IllusionLibs.Koikatu.UnityEngine.UI" Version="5.6.2" ExcludeAssets="runtime" />
+    <PackageReference Include="IllusionModdingAPI.KKAPI" Version="1.20.3" ExcludeAssets="runtime" />
+    <PackageReference Include="BepInEx.UnityInput" Version="1.0.0" ExcludeAssets="runtime" />
   </ItemGroup>
   <PropertyGroup>
     <IncludePattern>**\*.cs</IncludePattern>
