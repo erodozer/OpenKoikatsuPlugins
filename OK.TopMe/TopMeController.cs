@@ -189,6 +189,10 @@ namespace OKPlug
             lstProc = Traverse.Create(proc).Field<List<HActionBase>>("lstProc").Value;
             Flags = hFlag;
             Sprite = Traverse.Create(proc).Field<HSprite>("sprite").Value;
+            if (Sprite == null)
+            {
+                Sprite = Traverse.Create(proc).Field<HSprite[]>("sprites").Value[0];
+            }
 
             IsEdging = false;
 
