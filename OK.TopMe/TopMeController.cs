@@ -1,4 +1,5 @@
 using BepInEx.Unity;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.UI;
 using KKAPI.MainGame;
@@ -53,10 +54,11 @@ namespace OKPlug
         private System.Random rand = new System.Random();
         private GameObject fakeAnimButton;
 
-        private HSceneProc HScene;
-        private HFlag Flags { get { return HScene?.flags; } }
-        private HSprite Sprite { get { return HScene?.sprite; } }
-        
+        private List<HActionBase> lstProc;
+        private Traverse<List<HSceneProc.AnimationListInfo>[]> lstUseAnimInfo;
+        private HFlag Flags;
+        private HSprite Sprite;
+
         private HSceneProc.AnimationListInfo CurrentAnimation { get { return Flags?.nowAnimationInfo; } }
         private string CurrentAnimationState { get { return Flags?.nowAnimStateName; } }
 
@@ -102,12 +104,13 @@ namespace OKPlug
         {
             get
             {
-                if (HScene == null)
+
+                if (lstUseAnimInfo == null)
                 {
                     return new List<HSceneProc.AnimationListInfo>();
                 }
 
-                return HScene.lstUseAnimInfo.SelectMany(
+                return lstUseAnimInfo.Value.SelectMany(
                         e => e,
                         (e, anim) => anim
                     ).Where(anim => anim.mode != HFlag.EMode.aibu).ToList();
@@ -180,13 +183,16 @@ namespace OKPlug
             ResetEdgeTimer();
         }
 
-        protected override void OnStartH(HSceneProc proc, bool freeH)
+        protected override void OnStartH(MonoBehaviour proc, HFlag hFlag, bool vr)
         {
-            this.HScene = proc;
+            lstUseAnimInfo = Traverse.Create(proc).Field<List<HSceneProc.AnimationListInfo>[]>("lstUseAnimInfo");
+            lstProc = Traverse.Create(proc).Field<List<HActionBase>>("lstProc").Value;
+            Flags = hFlag;
+            Sprite = Traverse.Create(proc).Field<HSprite>("sprite").Value;
 
             IsEdging = false;
 
-            fakeAnimButton = Instantiate(proc.sprite.objMotionListNode, gameObject.transform, false);
+            fakeAnimButton = Instantiate(Sprite.objMotionListNode, gameObject.transform, false);
             fakeAnimButton.AddComponent<HSprite.AnimationInfoComponent>();
             fakeAnimButton.SetActive(true);
 
@@ -197,12 +203,17 @@ namespace OKPlug
             StartCoroutine(EdgeMe());
         }
 
-        protected override void OnEndH(HSceneProc proc, bool freeH)
+        protected override void OnEndH(MonoBehaviour proc, HFlag hFlag, bool vr)
         {
             StopAllCoroutines();
             Destroy(fakeAnimButton);
             nextAction = null;
             nextAnimation = null;
+
+            lstUseAnimInfo = null;
+            lstProc = null;
+            Sprite = null;
+            Flags = null;
         }
 
         IEnumerator PickAction()

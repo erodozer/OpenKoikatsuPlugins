@@ -7,21 +7,32 @@ This makes the extensions relatively unintrusive and portable.
 
 ## Installation
 Prerequisites:
-* Install [BepInEx 5.4](https://github.com/BepInEx/BepInEx/releases) or later.
-* Install [KKAPI 1.20.0](https://github.com/IllusionMods/IllusionModdingAPI) or later.
+* Install [BepInEx 5.4.15](https://github.com/BepInEx/BepInEx/releases) or later.
+* Install [KKAPI 1.25.0](https://github.com/IllusionMods/IllusionModdingAPI) or later.
 * Install [BepInEx.UnityInput](https://github.com/nhydock/BepInEx.UnityInput)
 
 Download the DLLs from the latest release and move them into BepInEx\plugins under your game directory.
 
 ## Plugins
 
-### OK.TopMe
+### TopMe
 
-Allows the AI to take charge of things in the bedroom.  Different positions and actions are chosen automatically, allowing for a more passive experience.
+Allows the AI to take charge of things in the bedroom.
 
+#### Pick Position
+
+Different positions and actions are chosen automatically, allowing for a more passive experience.
 This will even juggle new positions added with [AnimationLoader](https://github.com/IllusionMods/AnimationLoader)
 
-### OK.Immersion
+#### Edging
+
+AI is capable of edging on intervals, preventing the male gauge from always reaching maximum.  When in edge state the male guage will begin to decrease.  Edging by default is available in all service and female initiated insertion positions, but can be configured to be available on all positions.
+
+#### Auto Orgasm
+
+Allows for male orgasm to occur automatically when the gauge is maxed out, similar to female characters.
+
+### Immersion
 
 Adds new gameplay balancing mechanics to improve immersion.
 
