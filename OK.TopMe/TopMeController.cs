@@ -150,7 +150,7 @@ namespace OKPlug
                 {
                     return null;
                 }
-                return HScene?.lstProc[mode];
+                return lstProc[mode];
             }
         }
 
@@ -163,7 +163,7 @@ namespace OKPlug
         {
             HasOrgasmed = false;
 
-            if (Flags == null || HScene == null)
+            if (Flags == null)
             {
                 return;
             }
@@ -172,7 +172,7 @@ namespace OKPlug
             {
                 case HFlag.EMode.houshi:
                     Flags.rely = true;
-                    HScene.rely.InitTimer();
+                    Sprite.rely.InitTimer();
                     break;
                 case HFlag.EMode.sonyu:
                     // set to auto by default
@@ -183,7 +183,7 @@ namespace OKPlug
             ResetEdgeTimer();
         }
 
-        protected override void OnStartH(MonoBehaviour proc, HFlag hFlag, bool vr)
+        protected override void OnStartH(BaseLoader proc, HFlag hFlag, bool vr)
         {
             lstUseAnimInfo = Traverse.Create(proc).Field<List<HSceneProc.AnimationListInfo>[]>("lstUseAnimInfo");
             lstProc = Traverse.Create(proc).Field<List<HActionBase>>("lstProc").Value;
@@ -203,7 +203,7 @@ namespace OKPlug
             StartCoroutine(EdgeMe());
         }
 
-        protected override void OnEndH(MonoBehaviour proc, HFlag hFlag, bool vr)
+        protected override void OnEndH(BaseLoader proc, HFlag hFlag, bool vr)
         {
             StopAllCoroutines();
             Destroy(fakeAnimButton);
